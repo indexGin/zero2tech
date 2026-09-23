@@ -1,6 +1,25 @@
-.env
-dist
-node_modules
-backend/.venv
-backend/__pycache__
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+dist/
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+
+# misc
+.DS_Store
+*.log
+.env*
+!.env.example
+
+backend/.venv/
+backend/__pycache__/
 *.pyc
+backend/*.db

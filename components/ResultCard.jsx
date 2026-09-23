@@ -1,12 +1,20 @@
+"use client";
+
+// 结果区卡片。这一节只加了一样东西：右上角的"历史记录"按钮。
+// 点它会让父组件把历史弹窗打开——这张卡自己不管历史长什么样。
 import { useEffect, useRef } from "react";
 import { animate, scrambleText } from "animejs";
 
-// 一个完整的 React 组件：它自己 import 要用的 anime，自己 export 出去。
-// 一挂载（出现在页面上），就自己淡入、并把情感分数滚动归位——这是它自带的"入场动画"。
-// （点"开始分析"再去驱动分析，是"数据驱动界面"的活儿，留到 4.4。）
-export default function ResultCard() {
+export default function ResultCard({ result, onOpenHistory }) {
   const cardRef = useRef(null);
   const scoreRef = useRef(null);
+
+  const original = result
+    ? result.text
+    : "今天的风很轻，适合把脑海里的想法慢慢写下来。";
+  const pinyin = result ? result.pinyin : "jīn tiān de fēng hěn qīng …";
+  const score = result ? result.score : 0.86;
+  const label = result ? result.label : "偏积极";
 
   useEffect(() => {
     // 卡片自己淡入：.card 默认 opacity:0，这张卡负责把自己显出来
@@ -25,27 +33,33 @@ export default function ResultCard() {
 
   return (
     <article ref={cardRef} className="panel panel-half lab-panel result-panel card">
-      <div className="panel-heading">
-        <p className="section-kicker">结果区</p>
-        <h3>分析结果</h3>
+      <div className="panel-heading panel-heading-row">
+        <div>
+          <p className="section-kicker">结果区</p>
+          <h3>分析结果</h3>
+        </div>
+        {/* 这一节新增：打开历史弹窗 */}
+        <button type="button" className="ghost-button" onClick={onOpenHistory}>
+          历史记录
+        </button>
       </div>
       <div className="result-stack">
         <div className="result-item">
           <span>原文</span>
-          <p>今天的风很轻，适合把脑海里的想法慢慢写下来。</p>
+          <p>{original}</p>
         </div>
         <div className="result-item">
           <span>拼音</span>
-          <p>jīn tiān de fēng hěn qīng …</p>
+          <p>{pinyin}</p>
         </div>
         <div className="result-grid">
           <div className="result-badge">
             <span>情感分数</span>
-            <strong data-score ref={scoreRef}>0.86</strong>
+            <strong data-score ref={scoreRef}>{score}</strong>
           </div>
           <div className="result-badge">
             <span>情感判断</span>
-            <strong>偏积极</strong>
+            <strong>{label}</strong>
           </div>
         </div>
       </div>
