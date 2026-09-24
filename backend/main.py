@@ -3,7 +3,8 @@ from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from pypinyin import lazy_pinyin, Style
-from snownlp import SnowNLP
+import httpx
+from fastapi import HTTPException
 from storage import init_db, save_record, get_history
 from datetime import datetime, timezone
 import os
@@ -73,11 +74,12 @@ def score_label(score):
 def analyze(req: AnalyzeRequest, request: Request, response: Response):
     sid = get_session_id(request, response)
     text = req.text
-    score = round(SnowNLP(text).sentiments, 2)
+    # score = round(SnowNLP(text).sentiments, 2)
+    score, label = jev_sentiment(text)
     result = {
         "text": text,
         "score": score,
-        "label": score_label(score),
+        "label": label,
         "pinyin": " ".join(lazy_pinyin(text, style=Style.TONE)),
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
@@ -88,3 +90,45 @@ def analyze(req: AnalyzeRequest, request: Request, response: Response):
 def history(request: Request, response: Response, limit: int = 10):
     sid = get_session_id(request, response)
     return get_history(sid, limit)    # 只回这个会话自己的
+
+def jev_sentiment(text: str):
+    key = os.getenv("TYPESAFE_API_KEY")
+    if not key:
+        raise HTTPException(status_code=503, detail="未配置 TYPESAFE_API_KEY")
+
+    try:
+        res = httpx.post(
+            "https://api.typesafe.ai/v1/systemone",
+            headers={"Authorization": f"Bearer {key}"},
+            json={
+                "model": "jev-latest",
+                "state": text,
+                "questions": {
+                    "sentiment": {
+                        "type": "choice",
+                        "instructions": "判断这段中文表达的整体情感倾向，而不是仅根据个别褒贬词判断。",
+                        "criteria": {
+                            "negative": "整体偏消极，包括失望、难过、不满等",
+                            "neutral": "整体中性，或积极与消极并存且无明显倾向",
+                            "positive": "整体偏积极，包括喜悦、满意、期待等",
+                        },
+                    }
+                },
+            },
+            timeout=10.0,
+        )
+        res.raise_for_status()
+        answer = res.json()["answers"]["sentiment"]
+        probabilities = answer["probabilities"]
+        # 情感位置：0=消极，0.5=中性，1=积极；不是“预测正确率”
+        score = round(
+            probabilities["positive"] + 0.5 * probabilities["neutral"], 2
+        )
+        label = {
+            "negative": "偏消极",
+            "neutral": "中性",
+            "positive": "偏积极",
+        }[answer["choice"]]
+        return score, label
+    except (httpx.HTTPError, KeyError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail="Jev 情感分析服务暂不可用") from exc

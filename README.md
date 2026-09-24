@@ -9,7 +9,7 @@
 
 - 前端：Next.js（静态导出）＋ React
 - 后端：FastAPI ＋ uvicorn
-- 分析：snownlp（情感）、pypinyin（注音）
+- 分析：jev（情感）、pypinyin（注音）
 - 存储：SQLite
 - 线上：Nginx
 
